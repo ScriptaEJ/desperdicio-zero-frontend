@@ -4,6 +4,7 @@ import LoginPage from './pages/Login/LoginPage';
 import RegisterPage from './pages/Register/RegisterPage';
 import VisaoGeralPage from './pages/VisaoGeral/VisaoGeral';
 import InsumosPage from './pages/Insumos/Insumos';
+import ConfiguracoesPage from './pages/Configuracoes/Configuracoes';
 
 export default function App() {
   return (
@@ -18,7 +19,7 @@ export default function App() {
           <Route path="/insumos" element={<InsumosPage />} />
           {/* Quando o time criar as outras, basta adicionar aqui: */}
           <Route path="/visao-geral" element={<VisaoGeralPage />} />
-          {/* <Route path="/perdas" element={<PerdasPage />} /> */}
+          <Route path="/configuracoes" element={<ConfiguracoesPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />
