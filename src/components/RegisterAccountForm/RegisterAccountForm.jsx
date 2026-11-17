@@ -6,11 +6,11 @@ import TextField from '../TextField/TextField';
 import Button from '../Button/Button';
 import { UserIcon, MailIcon, LockIcon, ArrowRightIcon } from '../Icons/Icons';
 
-const EMPTY = { fullName: '', email: '', password: '', confirmPassword: '' };
+const EMPTY = { nome: '', email: '', senha: '', confirmPassword: '', perfil: 'user' };
 
 function validate(v) {
   const errors = {};
-  if (!v.fullName.trim()) errors.fullName = 'Informe seu nome completo.';
+  if (!v.nome.trim()) errors.nome = 'Informe seu nome completo.';
   if (!/\S+@\S+\.\S+/.test(v.email)) errors.email = 'Informe um e-mail válido.';
   if (v.password.length < 8) errors.password = 'A senha precisa ter no mínimo 8 caracteres.';
   if (v.confirmPassword !== v.password) errors.confirmPassword = 'As senhas não são iguais.';
@@ -41,13 +41,13 @@ export default function RegisterAccountForm({ initialValues, onSubmit, onSignIn 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-[22px]">
         <TextField
           label="Nome completo"
-          name="fullName"
+          name="nome"
           autoComplete="name"
           placeholder="Como podemos chamar você?"
           icon={<UserIcon />}
-          value={values.fullName}
-          onChange={handleChange('fullName')}
-          error={errors.fullName}
+          value={values.nome}
+          onChange={handleChange('nome')}
+          error={errors.nome}
         />
 
         <TextField

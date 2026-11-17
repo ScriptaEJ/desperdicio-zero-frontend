@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../../layouts/AuthLayout';
 import RegisterAccountForm from '../../components/RegisterAccountForm/RegisterAccountForm';
 import RegisterRestaurantForm from '../../components/RegisterRestaurantForm/RegisterRestaurantForm';
+import { createUser } from '../../services/userServices'
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export default function RegisterPage() {
       const payload = { ...accountData, restaurant: values };
 
       // TODO: chamar o service de cadastro (ex.: authService.register(payload))
-      console.log('cadastro', payload);
+      await createUser(payload)
     } finally {
       setLoading(false);
     }

@@ -70,4 +70,34 @@ export const BuildingIcon = ({ size = 18, ...props }) => (
     <path d="M8 8h2M8 12h2M8 16h2" />
   </svg>
 );
- 
+
+export const FileIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M6 3h8l4 4v14H6zM14 3v4h4M9 13h6M9 17h6" />
+  </svg>
+);
+
+export const DownloadIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />
+  </svg>
+);
+
+export const PlusIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+export const PlusCircleIcon = (props) => (
+  <svg {...base} {...props}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v8M8 12h8" />
+  </svg>
+);
+
+export const ChevronDownIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
