@@ -6,6 +6,7 @@ import VisaoGeralPage from './pages/VisaoGeral/VisaoGeral';
 import InsumosPage from './pages/Insumos/Insumos';
 import ConfiguracoesPage from './pages/Configuracoes/Configuracoes';
 import RelatoriosPage from './pages/Relatorios/RelatoriosPage'
+import PerdasPage from './pages/Perdas/PerdasPage'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/visao-geral" element={<VisaoGeralPage />} />
           <Route path="/configuracoes" element={<ConfiguracoesPage />} />
           <Route path="/relatorios" element={<RelatoriosPage />} />
+          <Route path="/perdas" element={<PerdasPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" replace />} />

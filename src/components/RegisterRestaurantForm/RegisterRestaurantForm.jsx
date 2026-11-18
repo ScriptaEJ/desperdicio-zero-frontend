@@ -6,18 +6,17 @@ import TextField from '../TextField/TextField';
 import Checkbox from '../Checkbox/Checkbox';
 import Button from '../Button/Button';
 import { BuildingIcon, ArrowRightIcon } from '../Icons/Icons';
-import { formatCnpj } from '../../utils/formatCnpj';
 
-const EMPTY = { restaurantName: '', cnpj: '', costPerKg: '', acceptedTerms: false };
+const EMPTY = { restaurantName: '', cwid: '', costPerKg: '', acceptedTerms: false };
 
 const legalLink = 'font-bold text-brand-800 hover:underline';
 
 function validate(v) {
   const errors = {};
   if (!v.restaurantName.trim()) errors.restaurantName = 'Informe o nome do restaurante.';
-  if (v.cnpj.replace(/\D/g, '').length !== 14) errors.cnpj = 'Informe um CNPJ com 14 dígitos.';
   if (!(Number(v.costPerKg.replace(',', '.')) > 0)) errors.costPerKg = 'Informe um custo maior que zero.';
   if (!v.acceptedTerms) errors.acceptedTerms = 'Aceite os termos para criar sua conta.';
+  if (!v.cwid.trim()) errors.cwid = 'Informe o CWID.';
   return errors;
 }
 
@@ -27,6 +26,7 @@ export default function RegisterRestaurantForm({
   onBack,
   onSignIn,
   loading = false,
+  error = '',
 }) {
   const [values, setValues] = useState({ ...EMPTY, ...initialValues });
   const [errors, setErrors] = useState({});
@@ -64,14 +64,13 @@ export default function RegisterRestaurantForm({
         />
 
         <TextField
-          label="CNPJ"
-          name="cnpj"
-          inputMode="numeric"
-          placeholder="00.000.000/0000-00"
+          label="CWID"
+          name="cwid"
+          placeholder="ID do restaurante no Cardápio Web"
           icon={<BuildingIcon />}
-          value={values.cnpj}
-          onChange={(e) => setField('cnpj', formatCnpj(e.target.value))}
-          error={errors.cnpj}
+          value={values.cwid}
+          onChange={(e) => setField('cwid', e.target.value)}
+          error={errors.cwid}
         />
 
         <TextField
@@ -107,6 +106,12 @@ export default function RegisterRestaurantForm({
             <span className="text-xs text-danger">{errors.acceptedTerms}</span>
           )}
         </div>
+
+        {error && (
+          <p role="alert" className="text-xs text-danger">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-3">
           <Button type="button" variant="secondary" onClick={() => onBack?.(values)}>

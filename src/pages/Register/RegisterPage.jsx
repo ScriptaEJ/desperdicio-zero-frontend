@@ -3,36 +3,68 @@ import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../../layouts/AuthLayout';
 import RegisterAccountForm from '../../components/RegisterAccountForm/RegisterAccountForm';
 import RegisterRestaurantForm from '../../components/RegisterRestaurantForm/RegisterRestaurantForm';
-import { createUser } from '../../services/userServices'
+import { createUser } from '../../services/userServices';
+import { createRestaurant } from '../../services/restaurantServices';
+
+const getErrorMessage = (err, fallback) =>
+  err?.response?.data?.message || fallback;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [account, setAccount] = useState({});
   const [restaurant, setRestaurant] = useState({});
+  const [user, setUser] = useState(null); // usuário já criado na etapa 1
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const goToLogin = () => navigate('/login');
 
-  const handleAccountSubmit = (values) => {
+  // ETAPA 1 → registra o usuário
+  const handleAccountSubmit = async (values) => {
     setAccount(values);
-    setStep(2);
+    setError('');
+
+    // se voltou da etapa 2, o usuário já existe: não cria de novo
+    if (user) {
+      setStep(2);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { confirmPassword, ...userData } = values;
+      const createdUser = await createUser(userData);
+      setUser(createdUser);
+      setStep(2);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Não foi possível criar sua conta. Tente novamente.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = (values) => {
     setRestaurant(values); // guarda o que já foi digitado
+    setError('');
     setStep(1);
   };
 
+  // ETAPA 2 → registra o restaurante
   const handleFinish = async (values) => {
     setRestaurant(values);
+    setError('');
     setLoading(true);
     try {
-      const { confirmPassword, ...accountData } = account;
-      const payload = { ...accountData, restaurant: values };
-
-      // TODO: chamar o service de cadastro (ex.: authService.register(payload))
-      await createUser(payload)
+      await createRestaurant({
+        nome: values.restaurantName,
+        cwid: values.cwid.trim() || null,
+        custo_medio_kg: Number(values.costPerKg.replace(',', '.')),
+        userId: user?.id,
+      });
+      navigate('/login');
+    } catch (err) {
+      setError(getErrorMessage(err, 'Não foi possível cadastrar o restaurante. Tente novamente.'));
     } finally {
       setLoading(false);
     }
@@ -45,6 +77,8 @@ export default function RegisterPage() {
           initialValues={account}
           onSubmit={handleAccountSubmit}
           onSignIn={goToLogin}
+          loading={loading}
+          error={error}
         />
       ) : (
         <RegisterRestaurantForm
@@ -53,6 +87,7 @@ export default function RegisterPage() {
           onBack={handleBack}
           onSignIn={goToLogin}
           loading={loading}
+          error={error}
         />
       )}
     </AuthLayout>

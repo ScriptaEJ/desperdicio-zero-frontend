@@ -12,12 +12,18 @@ function validate(v) {
   const errors = {};
   if (!v.nome.trim()) errors.nome = 'Informe seu nome completo.';
   if (!/\S+@\S+\.\S+/.test(v.email)) errors.email = 'Informe um e-mail válido.';
-  if (v.password.length < 8) errors.password = 'A senha precisa ter no mínimo 8 caracteres.';
-  if (v.confirmPassword !== v.password) errors.confirmPassword = 'As senhas não são iguais.';
+  if (v.senha.length < 8) errors.senha = 'A senha precisa ter no mínimo 8 caracteres.';
+  if (v.confirmPassword !== v.senha) errors.confirmPassword = 'As senhas não são iguais.';
   return errors;
 }
 
-export default function RegisterAccountForm({ initialValues, onSubmit, onSignIn }) {
+export default function RegisterAccountForm({
+  initialValues,
+  onSubmit,
+  onSignIn,
+  loading = false,
+  error = '',
+}) {
   const [values, setValues] = useState({ ...EMPTY, ...initialValues });
   const [errors, setErrors] = useState({});
 
@@ -65,13 +71,13 @@ export default function RegisterAccountForm({ initialValues, onSubmit, onSignIn 
         <TextField
           label="Senha"
           type="password"
-          name="password"
+          name="senha"
           autoComplete="new-password"
           placeholder="Mínimo de 8 caracteres"
           icon={<LockIcon />}
-          value={values.password}
-          onChange={handleChange('password')}
-          error={errors.password}
+          value={values.senha}
+          onChange={handleChange('senha')}
+          error={errors.senha}
         />
 
         <TextField
@@ -86,7 +92,19 @@ export default function RegisterAccountForm({ initialValues, onSubmit, onSignIn 
           error={errors.confirmPassword}
         />
 
-        <Button type="submit" fullWidth icon={<ArrowRightIcon />}>
+        {error && (
+          <p role="alert" className="text-xs text-danger">
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          fullWidth
+          loading={loading}
+          loadingText="Criando conta..."
+          icon={<ArrowRightIcon />}
+        >
           Continuar
         </Button>
       </form>

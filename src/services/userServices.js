@@ -1,7 +1,6 @@
 import api from './api'
 
-export async function createUser(payload){
-    const response = await api.post(`/users`, {payload})
-
-    return response.data
+export async function createUser(payload) {
+  const response = await api.post('/users', payload)
+  return response.data
 }

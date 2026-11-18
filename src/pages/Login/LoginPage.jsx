@@ -3,6 +3,7 @@ import AuthLayout from '../../layouts/AuthLayout';
 import LoginForm from '../../components/LoginForm/LoginForm';
 import { useNavigate } from 'react-router-dom';
 import { loginRequest } from '../../services/authService'
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +21,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginRequest(email, password)
+      navigate('/visao-geral')
     } catch (err) {
       setError('Não foi possível entrar. Confira seus dados e tente de novo.');
     } finally {
