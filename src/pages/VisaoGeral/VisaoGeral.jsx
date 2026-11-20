@@ -1,173 +1,477 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { perdasService } from '../../services/perdasService';
+import { turnoDe } from '../../utils/format';
 
-const DASHBOARD_PRESETS = {
-  'Esta semana': {
-    custoPerdido: 1520.4,
-    comparativoCusto: '12,4% menor que a semana anterior',
-    itensDescartados: 89.6,
-    comparativoItens: '7,2 kg a menos no período',
-    registrosPerda: 47,
-    mediaRegistros: 'Média de 6,7 registros por dia',
-    periodoRelatorio: '01 a 07 de junho',
-    ranking: [
-      { id: 1, nome: 'Mussarela', valor: 486.2, percentual: 32, barWidth: 78, color: 'bg-[#F59E0B]' },
-      { id: 2, nome: 'Tomate', valor: 273.8, percentual: 18, barWidth: 44, color: 'bg-[#EF5350]' },
-      { id: 3, nome: 'Filé de frango', valor: 212.9, percentual: 14, barWidth: 34, color: 'bg-[#38A169]' },
-      { id: 4, nome: 'Arroz branco', valor: 152.0, percentual: 10, barWidth: 24, color: 'bg-[#7C9A7E]' },
-      { id: 5, nome: 'Outros itens', valor: 395.5, percentual: 26, barWidth: 63, color: 'bg-[#D6D6D2]' },
-    ],
-    diasSemana: [
-      { dia: 'Seg', valor: 175, heightPct: 50, destaque: false },
-      { dia: 'Ter', valor: 235, heightPct: 68, destaque: false },
-      { dia: 'Qua', valor: 155, heightPct: 44, destaque: false },
-      { dia: 'Qui', valor: 290, heightPct: 83, destaque: false },
-      { dia: 'Sex', valor: 348, heightPct: 100, destaque: true },
-      { dia: 'Sáb', valor: 310, heightPct: 89, destaque: false },
-      { dia: 'Dom', valor: 205, heightPct: 59, destaque: false },
-    ],
-    maiorDesperdicioTitulo: 'Sexta-feira à noite',
-    maiorDesperdicioValor: 348,
-    alertaItem: 'Mussarela',
-    alertaPercentual: '32%',
-    alertaDetalhes: 'Foram 18,4 kg descartados, principalmente por vencimento e sobra de preparo.',
-    sugestaoTitulo: 'Ajuste a compra de mussarela',
-    sugestaoTextoAntes: 'Reduza a compra semanal em ',
-    sugestaoDestaque1: '8%',
-    sugestaoTextoMeio: ' e ajuste a porção padrão de 120g para 110g. Economia estimada de ',
-    sugestaoEconomia: 'R$ 380/mês',
-  },
-  'Semana passada': {
-    custoPerdido: 1735.6,
-    comparativoCusto: '4,1% maior que a semana retrasada',
-    itensDescartados: 96.8,
-    comparativoItens: '3,5 kg a mais no período',
-    registrosPerda: 53,
-    mediaRegistros: 'Média de 7,6 registros por dia',
-    periodoRelatorio: '25 a 31 de maio',
-    ranking: [
-      { id: 1, nome: 'Mussarela', valor: 538.0, percentual: 31, barWidth: 76, color: 'bg-[#F59E0B]' },
-      { id: 2, nome: 'Tomate', valor: 347.1, percentual: 20, barWidth: 49, color: 'bg-[#EF5350]' },
-      { id: 3, nome: 'Filé de frango', valor: 260.3, percentual: 15, barWidth: 37, color: 'bg-[#38A169]' },
-      { id: 4, nome: 'Arroz branco', valor: 173.6, percentual: 10, barWidth: 24, color: 'bg-[#7C9A7E]' },
-      { id: 5, nome: 'Outros itens', valor: 416.6, percentual: 24, barWidth: 59, color: 'bg-[#D6D6D2]' },
-    ],
-    diasSemana: [
-      { dia: 'Seg', valor: 190, heightPct: 48, destaque: false },
-      { dia: 'Ter', valor: 250, heightPct: 63, destaque: false },
-      { dia: 'Qua', valor: 210, heightPct: 53, destaque: false },
-      { dia: 'Qui', valor: 305, heightPct: 77, destaque: false },
-      { dia: 'Sex', valor: 395, heightPct: 100, destaque: true },
-      { dia: 'Sáb', valor: 340, heightPct: 86, destaque: false },
-      { dia: 'Dom', valor: 230, heightPct: 58, destaque: false },
-    ],
-    maiorDesperdicioTitulo: 'Sexta-feira à noite',
-    maiorDesperdicioValor: 395,
-    alertaItem: 'Mussarela',
-    alertaPercentual: '31%',
-    alertaDetalhes: 'Foram 20,4 kg descartados, com pico na operação do jantar de sexta.',
-    sugestaoTitulo: 'Ajuste a compra de mussarela',
-    sugestaoTextoAntes: 'Reduza a compra semanal em ',
-    sugestaoDestaque1: '10%',
-    sugestaoTextoMeio: ' e revise o armazenamento refrigerado. Economia estimada de ',
-    sugestaoEconomia: 'R$ 420/mês',
-  },
-  'Este mês': {
-    custoPerdido: 5890.0,
-    comparativoCusto: '9,8% menor que o mês anterior',
-    itensDescartados: 342.4,
-    comparativoItens: '24,0 kg a menos no período',
-    registrosPerda: 184,
-    mediaRegistros: 'Média de 6,1 registros por dia',
-    periodoRelatorio: '01 a 30 de junho',
-    ranking: [
-      { id: 1, nome: 'Mussarela', valor: 1825.9, percentual: 31, barWidth: 76, color: 'bg-[#F59E0B]' },
-      { id: 2, nome: 'Tomate', valor: 1119.1, percentual: 19, barWidth: 47, color: 'bg-[#EF5350]' },
-      { id: 3, nome: 'Filé de frango', valor: 883.5, percentual: 15, barWidth: 37, color: 'bg-[#38A169]' },
-      { id: 4, nome: 'Arroz branco', valor: 589.0, percentual: 10, barWidth: 24, color: 'bg-[#7C9A7E]' },
-      { id: 5, nome: 'Outros itens', valor: 1472.5, percentual: 25, barWidth: 61, color: 'bg-[#D6D6D2]' },
-    ],
-    diasSemana: [
-      { dia: 'Seg', valor: 680, heightPct: 50, destaque: false },
-      { dia: 'Ter', valor: 890, heightPct: 66, destaque: false },
-      { dia: 'Qua', valor: 640, heightPct: 47, destaque: false },
-      { dia: 'Qui', valor: 1120, heightPct: 83, destaque: false },
-      { dia: 'Sex', valor: 1350, heightPct: 100, destaque: true },
-      { dia: 'Sáb', valor: 1210, heightPct: 90, destaque: false },
-      { dia: 'Dom', valor: 810, heightPct: 60, destaque: false },
-    ],
-    maiorDesperdicioTitulo: 'Sextas-feiras à noite',
-    maiorDesperdicioValor: 1350,
-    alertaItem: 'Mussarela',
-    alertaPercentual: '31%',
-    alertaDetalhes: 'Acumulado de 69,2 kg no mês, concentrado nos fins de semana.',
-    sugestaoTitulo: 'Ajuste a compra de mussarela',
-    sugestaoTextoAntes: 'Reduza a compra semanal em ',
-    sugestaoDestaque1: '8%',
-    sugestaoTextoMeio: ' e ajuste a porção padrão de 120g para 110g. Economia estimada de ',
-    sugestaoEconomia: 'R$ 380/mês',
-  },
-};
+const RANKING_COLORS = [
+  'bg-[#F59E0B]',
+  'bg-[#EF5350]',
+  'bg-[#38A169]',
+  'bg-[#7C9A7E]',
+  'bg-[#D6D6D2]',
+];
 
-const SHIFT_MULTIPLIERS = {
-  'Todos os turnos': 1,
-  Manhã: 0.25,
-  Tarde: 0.32,
-  Noite: 0.43,
+const DIAS_LABEL = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+const DIAS_COMPLETOS = [
+  'Segunda-feira',
+  'Terça-feira',
+  'Quarta-feira',
+  'Quinta-feira',
+  'Sexta-feira',
+  'Sábado',
+  'Domingo',
+];
+
+const TURNO_EXTENSO = {
+  Manhã: 'de manhã',
+  Tarde: 'à tarde',
+  Noite: 'à noite',
 };
 
 const formatBRL = (value) =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  Number(value || 0).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
 
-export default function VisaoGeralPage({ userName = 'Marina' }) {
+function resolverNomeUsuarioLogado(propName) {
+  if (propName) return propName;
+
+  const savedName =
+    localStorage.getItem('user_name') || localStorage.getItem('nome');
+  if (savedName) return savedName.split(' ')[0];
+
+  try {
+    const token =
+      localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload?.nome) return String(payload.nome).split(' ')[0];
+      if (payload?.sub && String(payload.sub).includes('@')) {
+        const prefixo = String(payload.sub).split('@')[0];
+        return prefixo.charAt(0).toUpperCase() + prefixo.slice(1);
+      }
+    }
+  } catch {
+    // Ignora falha ao decodificar token
+  }
+
+  return 'Gestor';
+}
+
+function obterIntervalosPeriodo(periodo) {
+  const agora = new Date();
+  const hojeInicio = new Date(
+    agora.getFullYear(),
+    agora.getMonth(),
+    agora.getDate()
+  );
+
+  // Segunda-feira da semana atual (00:00:00)
+  const diaSemana = hojeInicio.getDay(); // 0 = Dom, 1 = Seg ... 6 = Sáb
+  const diffSegunda = diaSemana === 0 ? -6 : 1 - diaSemana;
+  const inicioSemanaAtual = new Date(hojeInicio);
+  inicioSemanaAtual.setDate(hojeInicio.getDate() + diffSegunda);
+
+  if (periodo === 'Semana passada') {
+    const inicio = new Date(inicioSemanaAtual);
+    inicio.setDate(inicio.getDate() - 7);
+
+    const fim = new Date(inicioSemanaAtual);
+    fim.setMilliseconds(-1);
+
+    const anteriorInicio = new Date(inicio);
+    anteriorInicio.setDate(anteriorInicio.getDate() - 7);
+
+    const anteriorFim = new Date(inicio);
+    anteriorFim.setMilliseconds(-1);
+
+    return { inicio, fim, anteriorInicio, anteriorFim, diasDivisor: 7 };
+  }
+
+  if (periodo === 'Este mês') {
+    const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const fim = new Date(
+      agora.getFullYear(),
+      agora.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const anteriorInicio = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+    const anteriorFim = new Date(inicio);
+    anteriorFim.setMilliseconds(-1);
+
+    const diasDivisor = Math.max(1, agora.getDate());
+    return { inicio, fim, anteriorInicio, anteriorFim, diasDivisor };
+  }
+
+  // 'Esta semana' (padrão)
+  const fim = new Date(inicioSemanaAtual);
+  fim.setDate(fim.getDate() + 6);
+  fim.setHours(23, 59, 59, 999);
+
+  const anteriorInicio = new Date(inicioSemanaAtual);
+  anteriorInicio.setDate(anteriorInicio.getDate() - 7);
+
+  const anteriorFim = new Date(inicioSemanaAtual);
+  anteriorFim.setMilliseconds(-1);
+
+  const diasDecorridos = diaSemana === 0 ? 7 : diaSemana;
+  return {
+    inicio: inicioSemanaAtual,
+    fim,
+    anteriorInicio,
+    anteriorFim,
+    diasDivisor: Math.max(1, diasDecorridos),
+  };
+}
+
+function formatarIntervaloTexto(inicio, fim) {
+  const diaIni = String(inicio.getDate()).padStart(2, '0');
+  const diaFim = String(fim.getDate()).padStart(2, '0');
+  const mesFim = fim.toLocaleDateString('pt-BR', { month: 'long' });
+
+  if (inicio.getMonth() === fim.getMonth()) {
+    return `${diaIni} a ${diaFim} de ${mesFim}`;
+  }
+  const mesIni = inicio.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+  return `${diaIni} de ${mesIni} a ${diaFim} de ${mesFim}`;
+}
+
+function converterParaKg(quantidade, unidade) {
+  const qtd = Number(quantidade || 0);
+  if (unidade === 'kg') return qtd;
+  if (unidade === 'g') return qtd / 1000;
+  return 0;
+}
+
+function gerarSugestaoPorMotivo(nomeItem, motivoDominante, custoItem, diasDivisor) {
+  const itemLower = nomeItem.toLowerCase();
+  const economiaMensal = Math.max(10, Math.round((custoItem / diasDivisor) * 30 * 0.25));
+  const economiaFmt = `${formatBRL(economiaMensal)}/mês`;
+
+  if (motivoDominante === 'Vencimento') {
+    return {
+      titulo: `Ajuste a compra de ${itemLower}`,
+      textoAntes: 'Reduza o pedido semanal em ',
+      destaque1: '10%',
+      textoMeio: ' e priorize a rotação PVPS (primeiro que vence, primeiro que sai). Economia estimada de ',
+      economia: economiaFmt,
+    };
+  }
+
+  if (motivoDominante === 'Sobrou') {
+    return {
+      titulo: `Reduza o porcionamento de ${itemLower}`,
+      textoAntes: 'Ajuste a produção diária em ',
+      destaque1: '8%',
+      textoMeio: ' nos turnos de menor movimento e controle as porções. Economia estimada de ',
+      economia: economiaFmt,
+    };
+  }
+
+  if (motivoDominante === 'Erro de preparo') {
+    return {
+      titulo: `Padronize o preparo de ${itemLower}`,
+      textoAntes: 'Revise a ficha técnica e o porcionamento prévio para cortar falhas em ',
+      destaque1: '15%',
+      textoMeio: '. Economia estimada de ',
+      economia: economiaFmt,
+    };
+  }
+
+  return {
+    titulo: `Revise o controle de ${itemLower}`,
+    textoAntes: 'Reforce a conferência de armazenamento e manuseio para reduzir perdas em ',
+    destaque1: '10%',
+    textoMeio: '. Economia estimada de ',
+    economia: economiaFmt,
+  };
+}
+
+export default function VisaoGeralPage({ userName }) {
+  const [todasPerdas, setTodasPerdas] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+
   const [periodo, setPeriodo] = useState('Esta semana');
   const [turno, setTurno] = useState('Todos os turnos');
   const [downloading, setDownloading] = useState(false);
 
-  const data = useMemo(() => {
-    const base = DASHBOARD_PRESETS[periodo] || DASHBOARD_PRESETS['Esta semana'];
-    const mult = SHIFT_MULTIPLIERS[turno] ?? 1;
+  const nomeExibicao = useMemo(
+    () => resolverNomeUsuarioLogado(userName),
+    [userName]
+  );
 
-    if (mult === 1) return base;
+  const carregarDados = useCallback(async () => {
+    try {
+      setCarregando(true);
+      setErro('');
+      const lista = await perdasService.listar();
+      setTodasPerdas(lista);
+    } catch (err) {
+      setErro(
+        err instanceof Error
+          ? err.message
+          : 'Não foi possível carregar os indicadores.'
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
+
+  const data = useMemo(() => {
+    const { inicio, fim, anteriorInicio, anteriorFim, diasDivisor } =
+      obterIntervalosPeriodo(periodo);
+
+    const filtraTurno = (p) =>
+      turno === 'Todos os turnos' || turnoDe(p) === turno;
+
+    const atuais = todasPerdas.filter((p) => {
+      const dt = new Date(p.dataHora);
+      return dt >= inicio && dt <= fim && filtraTurno(p);
+    });
+
+    const anteriores = todasPerdas.filter((p) => {
+      const dt = new Date(p.dataHora);
+      return dt >= anteriorInicio && dt <= anteriorFim && filtraTurno(p);
+    });
+
+    // KPI 1: Custo perdido + comparativo
+    const custoPerdido = atuais.reduce((acc, p) => acc + Number(p.custo || 0), 0);
+    const custoAnterior = anteriores.reduce(
+      (acc, p) => acc + Number(p.custo || 0),
+      0
+    );
+
+    let comparativoCusto = 'Sem registros no período anterior';
+    if (custoAnterior > 0) {
+      const variacao = ((custoPerdido - custoAnterior) / custoAnterior) * 100;
+      const pctFmt = Math.abs(variacao).toFixed(1).replace('.', ',');
+      comparativoCusto =
+        variacao <= 0
+          ? `${pctFmt}% menor que o período anterior`
+          : `${pctFmt}% maior que o período anterior`;
+    } else if (custoPerdido > 0) {
+      comparativoCusto = 'Primeiro período com perdas registradas';
+    }
+
+    // KPI 2: Itens descartados em kg + comparativo
+    const itensDescartados = Number(
+      atuais
+        .reduce((acc, p) => acc + converterParaKg(p.quantidade, p.unidade), 0)
+        .toFixed(1)
+    );
+    const itensAnteriores = anteriores.reduce(
+      (acc, p) => acc + converterParaKg(p.quantidade, p.unidade),
+      0
+    );
+
+    let comparativoItens = 'Sem volume no período anterior';
+    if (itensAnteriores > 0 || itensDescartados > 0) {
+      const diffKg = itensDescartados - itensAnteriores;
+      const diffFmt = Math.abs(diffKg).toFixed(1).replace('.', ',');
+      if (Math.abs(diffKg) < 0.05) {
+        comparativoItens = 'Mesmo volume do período anterior';
+      } else {
+        comparativoItens =
+          diffKg < 0
+            ? `${diffFmt} kg a menos no período`
+            : `${diffFmt} kg a mais no período`;
+      }
+    }
+
+    // KPI 3: Registros de perda + média diária
+    const registrosPerda = atuais.length;
+    const mediaDia = (registrosPerda / diasDivisor).toFixed(1).replace('.', ',');
+    const mediaRegistros = `Média de ${mediaDia} registros por dia`;
+
+    // Ranking por item (Top 4 + Outros)
+    const mapaItens = new Map();
+    atuais.forEach((p) => {
+      const chave = p.insumo || 'Item sem nome';
+      const atual = mapaItens.get(chave) || {
+        nome: chave,
+        valor: 0,
+        kg: 0,
+        qtdBruta: 0,
+        unidade: p.unidade,
+        motivos: new Map(),
+      };
+      atual.valor += Number(p.custo || 0);
+      atual.kg += converterParaKg(p.quantidade, p.unidade);
+      atual.qtdBruta += Number(p.quantidade || 0);
+      atual.motivos.set(
+        p.motivo,
+        (atual.motivos.get(p.motivo) || 0) + Number(p.custo || 0)
+      );
+      mapaItens.set(chave, atual);
+    });
+
+    const itensOrdenados = [...mapaItens.values()].sort(
+      (a, b) => b.valor - a.valor
+    );
+    const top4 = itensOrdenados.slice(0, 4);
+    const restantes = itensOrdenados.slice(4);
+
+    if (restantes.length > 0) {
+      const somaOutros = restantes.reduce((acc, i) => acc + i.valor, 0);
+      top4.push({
+        nome: 'Outros itens',
+        valor: somaOutros,
+        kg: 0,
+        qtdBruta: 0,
+        unidade: '',
+        motivos: new Map(),
+      });
+    }
+
+    const maxRankingValor = Math.max(...top4.map((i) => i.valor), 0);
+    const ranking = top4.map((item, idx) => ({
+      id: `${item.nome}-${idx}`,
+      nome: item.nome,
+      valor: item.valor,
+      percentual:
+        custoPerdido > 0 ? Math.round((item.valor / custoPerdido) * 100) : 0,
+      barWidth:
+        maxRankingValor > 0
+          ? Math.max(8, Math.round((item.valor / maxRankingValor) * 100))
+          : 0,
+      color: RANKING_COLORS[idx] || RANKING_COLORS[RANKING_COLORS.length - 1],
+    }));
+
+    // Por dia da semana (Seg=0 ... Dom=6)
+    const totaisPorDia = [0, 0, 0, 0, 0, 0, 0];
+    const mapaDiaTurno = new Map();
+
+    atuais.forEach((p) => {
+      const dt = new Date(p.dataHora);
+      const idxSeg = dt.getDay() === 0 ? 6 : dt.getDay() - 1;
+      const custo = Number(p.custo || 0);
+      totaisPorDia[idxSeg] += custo;
+
+      const t = turnoDe(p);
+      const chaveDT = `${idxSeg}-${t}`;
+      mapaDiaTurno.set(chaveDT, (mapaDiaTurno.get(chaveDT) || 0) + custo);
+    });
+
+    const maxDiaValor = Math.max(...totaisPorDia, 0);
+    const diasSemana = DIAS_LABEL.map((dia, idx) => {
+      const valor = Math.round(totaisPorDia[idx]);
+      return {
+        dia,
+        valor,
+        heightPct:
+          maxDiaValor > 0
+            ? Math.max(10, Math.round((totaisPorDia[idx] / maxDiaValor) * 100))
+            : 8,
+        destaque: maxDiaValor > 0 && totaisPorDia[idx] === maxDiaValor,
+      };
+    });
+
+    // Maior desperdício (Dia + Turno)
+    let maiorDesperdicioTitulo = 'Sem registros no período';
+    let maiorDesperdicioValor = 0;
+
+    if (mapaDiaTurno.size > 0) {
+      const [chaveTop, valorTop] = [...mapaDiaTurno.entries()].sort(
+        (a, b) => b[1] - a[1]
+      )[0];
+      const [idxDiaStr, nomeTurno] = chaveTop.split('-');
+      const diaNome = DIAS_COMPLETOS[Number(idxDiaStr)] || '';
+      const sufixoTurno = TURNO_EXTENSO[nomeTurno] || '';
+      maiorDesperdicioTitulo = `${diaNome} ${sufixoTurno}`.trim();
+      maiorDesperdicioValor = Math.round(valorTop);
+    }
+
+    // Alerta + Sugestão inteligente baseados no item #1
+    const lider = itensOrdenados[0] || null;
+    let alertaItem = null;
+    let alertaPercentual = '0%';
+    let alertaDetalhes =
+      'Registre os descartes diários para identificar automaticamente os maiores focos de perda.';
+    let sugestao = {
+      titulo: 'Mantenha os registros atualizados',
+      textoAntes: 'Continue lançando as perdas por turno para descobrir oportunidades de reduzir custos em até ',
+      destaque1: '15%',
+      textoMeio: ' nas próximas semanas. Economia estimada após ',
+      economia: '7 dias de histórico',
+    };
+
+    if (lider && custoPerdido > 0) {
+      const pctLider = Math.round((lider.valor / custoPerdido) * 100);
+      const motivosOrdenados = [...lider.motivos.entries()].sort(
+        (a, b) => b[1] - a[1]
+      );
+      const motivoPrincipal = motivosOrdenados[0]?.[0] || 'descarte';
+
+      const volumeTexto =
+        lider.kg > 0
+          ? `${lider.kg.toFixed(1).replace('.', ',')} kg`
+          : `${lider.qtdBruta.toLocaleString('pt-BR')} ${lider.unidade}`;
+
+      alertaItem = lider.nome;
+      alertaPercentual = `${pctLider}%`;
+      alertaDetalhes = `Foram ${volumeTexto} descartados no período, principalmente por ${motivoPrincipal.toLowerCase()}.`;
+
+      sugestao = gerarSugestaoPorMotivo(
+        lider.nome,
+        motivoPrincipal,
+        lider.valor,
+        diasDivisor
+      );
+    }
 
     return {
-      ...base,
-      custoPerdido: base.custoPerdido * mult,
-      itensDescartados: Number((base.itensDescartados * mult).toFixed(1)),
-      registrosPerda: Math.max(1, Math.round(base.registrosPerda * mult)),
-      ranking: base.ranking.map((item) => ({
-        ...item,
-        valor: item.valor * mult,
-      })),
-      diasSemana: base.diasSemana.map((d) => ({
-        ...d,
-        valor: Math.round(d.valor * mult),
-      })),
-      maiorDesperdicioValor: Math.round(base.maiorDesperdicioValor * mult),
+      custoPerdido,
+      comparativoCusto,
+      itensDescartados,
+      comparativoItens,
+      registrosPerda,
+      mediaRegistros,
+      periodoRelatorio: formatarIntervaloTexto(inicio, fim),
+      ranking,
+      diasSemana,
+      maiorDesperdicioTitulo,
+      maiorDesperdicioValor,
+      alertaItem,
+      alertaPercentual,
+      alertaDetalhes,
+      sugestao,
     };
-  }, [periodo, turno]);
+  }, [todasPerdas, periodo, turno]);
 
   const handleDownloadReport = () => {
     setDownloading(true);
 
     const linhas = [
-      'Resumo Semanal - Desperdício Zero',
-      `Período: ${data.periodoRelatorio} (${turno})`,
+      'Resumo - Desperdício Zero',
+      `Período: ${periodo} (${data.periodoRelatorio}) | Turno: ${turno}`,
       `Custo perdido: ${formatBRL(data.custoPerdido)}`,
-      `Itens descartados: ${data.itensDescartados.toLocaleString('pt-BR')} kg`,
+      `Itens descartados: ${data.itensDescartados.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} kg`,
       `Registros de perda: ${data.registrosPerda}`,
       '',
       'Ranking por item:',
-      ...data.ranking.map(
-        (r, i) => `${i + 1}. ${r.nome} - ${formatBRL(r.valor)} (${r.percentual}%)`
-      ),
+      ...(data.ranking.length > 0
+        ? data.ranking.map(
+            (r, i) => `${i + 1}. ${r.nome} - ${formatBRL(r.valor)} (${r.percentual}%)`
+          )
+        : ['Nenhum registro no período selecionado.']),
     ];
 
     const blob = new Blob([linhas.join('\n')], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `relatorio-desperdicio-zero.txt`;
+    link.download = 'relatorio-desperdicio-zero.txt';
     link.click();
     URL.revokeObjectURL(url);
 
@@ -179,7 +483,9 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
       {/* Cabeçalho + Filtros */}
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
         <div>
-          <span className="text-xs font-medium text-brand-800">Olá, {userName}</span>
+          <span className="text-xs font-medium text-brand-800">
+            Olá, {nomeExibicao}
+          </span>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mt-0.5">
             Visão geral
           </h1>
@@ -221,9 +527,23 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
         </div>
       </div>
 
+      {/* Banner de Erro da API */}
+      {erro && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-xs sm:text-sm flex items-center justify-between gap-3">
+          <span>{erro}</span>
+          <button
+            type="button"
+            onClick={carregarDados}
+            className="font-semibold underline shrink-0 cursor-pointer"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
       {/* Linha 1: 3 Cards de KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
-        {/* Card 1: Custo perdido (com borda lateral verde) */}
+        {/* Card 1: Custo perdido */}
         <div className="bg-white rounded-xl border border-slate-200/80 border-l-4 border-l-brand-800 p-4 sm:p-5 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-medium text-slate-500">Custo perdido</p>
@@ -235,10 +555,10 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
           </div>
 
           <p className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight mt-2">
-            {formatBRL(data.custoPerdido)}
+            {carregando ? '—' : formatBRL(data.custoPerdido)}
           </p>
           <p className="text-xs font-medium text-[#145338] mt-1.5">
-            {data.comparativoCusto}
+            {carregando ? 'Calculando...' : data.comparativoCusto}
           </p>
         </div>
 
@@ -252,10 +572,14 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
           </div>
 
           <p className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight mt-2">
-            {data.itensDescartados.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} kg
+            {carregando
+              ? '—'
+              : `${data.itensDescartados.toLocaleString('pt-BR', {
+                  minimumFractionDigits: 1,
+                })} kg`}
           </p>
           <p className="text-xs font-medium text-[#145338] mt-1.5">
-            {data.comparativoItens}
+            {carregando ? 'Calculando...' : data.comparativoItens}
           </p>
         </div>
 
@@ -269,85 +593,94 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
           </div>
 
           <p className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight mt-2">
-            {data.registrosPerda}
+            {carregando ? '—' : data.registrosPerda}
           </p>
-          <p className="text-xs text-slate-400 mt-1.5">{data.mediaRegistros}</p>
+          <p className="text-xs text-slate-400 mt-1.5">
+            {carregando ? 'Calculando...' : data.mediaRegistros}
+          </p>
         </div>
       </div>
 
       {/* Linha 2: Ranking por item + Gráfico Por dia da semana */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Ranking por item (7 colunas no desktop) */}
+        {/* Ranking por item */}
         <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/80 p-5 sm:p-6 flex flex-col justify-between">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900">Ranking por item</h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Itens que mais geraram custo nesta semana
+                Itens que mais geraram custo no período selecionado
               </p>
             </div>
 
             <Link
-              to="/analises"
+              to="/perdas"
               className="text-xs font-semibold text-brand-800 hover:underline shrink-0"
             >
-              Ver análise
+              Ver registros
             </Link>
           </div>
 
-          <div className="mt-6 space-y-4">
-            {data.ranking.map((item, idx) => (
-              <div
-                key={item.id}
-                className="grid grid-cols-12 items-center gap-2 sm:gap-3 text-xs sm:text-sm"
-              >
-                {/* Posição + Nome */}
-                <div className="col-span-5 sm:col-span-4 flex items-center gap-2.5 min-w-0">
-                  <span className="text-xs font-medium text-slate-400 w-3 shrink-0">
-                    {idx + 1}
-                  </span>
-                  <span className="font-medium text-slate-800 truncate">{item.nome}</span>
-                </div>
+          {carregando ? (
+            <div className="py-10 text-center text-xs text-slate-400">
+              Carregando ranking...
+            </div>
+          ) : data.ranking.length === 0 ? (
+            <div className="py-10 text-center text-xs text-slate-400">
+              Nenhuma perda registrada neste período e turno.
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {data.ranking.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="grid grid-cols-12 items-center gap-2 sm:gap-3 text-xs sm:text-sm"
+                >
+                  <div className="col-span-5 sm:col-span-4 flex items-center gap-2.5 min-w-0">
+                    <span className="text-xs font-medium text-slate-400 w-3 shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="font-medium text-slate-800 truncate">
+                      {item.nome}
+                    </span>
+                  </div>
 
-                {/* Barra de progresso */}
-                <div className="col-span-4 sm:col-span-5">
-                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${item.color}`}
-                      style={{ width: `${item.barWidth}%` }}
-                    />
+                  <div className="col-span-4 sm:col-span-5">
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${item.color}`}
+                        style={{ width: `${item.barWidth}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="col-span-3 flex items-center justify-end gap-2 sm:gap-3 shrink-0">
+                    <span className="font-semibold text-slate-800 tabular-nums">
+                      {formatBRL(item.valor)}
+                    </span>
+                    <span className="text-xs text-slate-400 w-8 text-right tabular-nums hidden sm:inline">
+                      {item.percentual}%
+                    </span>
                   </div>
                 </div>
-
-                {/* Valor + Percentual */}
-                <div className="col-span-3 flex items-center justify-end gap-2 sm:gap-3 shrink-0">
-                  <span className="font-semibold text-slate-800 tabular-nums">
-                    {formatBRL(item.valor)}
-                  </span>
-                  <span className="text-xs text-slate-400 w-8 text-right tabular-nums hidden sm:inline">
-                    {item.percentual}%
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Por dia da semana (5 colunas no desktop) */}
+        {/* Por dia da semana */}
         <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <h2 className="text-base font-bold text-slate-900">Por dia da semana</h2>
             <p className="text-xs text-slate-400 mt-0.5">Custo de desperdício em reais</p>
           </div>
 
-          {/* Gráfico de Barras Verticais */}
           <div className="grid grid-cols-7 gap-2 sm:gap-3 items-end h-40 pt-6 pb-2 px-1">
             {data.diasSemana.map((item) => (
               <div
                 key={item.dia}
                 className="flex flex-col items-center justify-end h-full group"
               >
-                {/* Valor no hover */}
                 <span className="text-[10px] font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity mb-1 tabular-nums">
                   R${item.valor}
                 </span>
@@ -375,7 +708,6 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
             ))}
           </div>
 
-          {/* Destaque Maior Desperdício */}
           <div className="mt-4 bg-[#FDF6EC] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
             <div>
               <span className="block text-[11px] text-slate-500">Maior desperdício</span>
@@ -393,7 +725,6 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
 
       {/* Linha 3: Alerta da Semana + Sugestão Inteligente */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Card Escuro: Alerta da Semana */}
         <div className="lg:col-span-7 bg-[#14452F] text-white rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -404,30 +735,35 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
                 </svg>
               </span>
               <span className="text-[11px] font-bold tracking-wider uppercase text-white/75">
-                Alerta da semana
+                Alerta do período
               </span>
             </div>
 
             <span className="bg-[#E9B949] text-[#143322] text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shrink-0">
-              Atenção
+              {data.alertaItem ? 'Atenção' : 'Estável'}
             </span>
           </div>
 
           <div className="mt-5">
-            <h3 className="text-lg sm:text-[22px] font-bold leading-snug tracking-tight">
-              {data.alertaItem} representou{' '}
-              <span className="text-[#F4C150]">
-                {data.alertaPercentual} do desperdício
-              </span>{' '}
-              desta semana.
-            </h3>
+            {data.alertaItem ? (
+              <h3 className="text-lg sm:text-[22px] font-bold leading-snug tracking-tight">
+                {data.alertaItem} representou{' '}
+                <span className="text-[#F4C150]">
+                  {data.alertaPercentual} do desperdício
+                </span>{' '}
+                neste período.
+              </h3>
+            ) : (
+              <h3 className="text-lg sm:text-[22px] font-bold leading-snug tracking-tight">
+                Nenhuma perda crítica detectada neste período.
+              </h3>
+            )}
             <p className="text-xs sm:text-sm text-white/75 mt-2 leading-relaxed">
               {data.alertaDetalhes}
             </p>
           </div>
         </div>
 
-        {/* Card Branco: Sugestão Inteligente */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-start gap-3">
@@ -442,16 +778,21 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
                   Sugestão inteligente
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
-                  {data.sugestaoTitulo}
+                  {data.sugestao.titulo}
                 </h3>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-500 mt-4 leading-relaxed">
-              {data.sugestaoTextoAntes}
-              <strong className="font-semibold text-slate-800">{data.sugestaoDestaque1}</strong>
-              {data.sugestaoTextoMeio}
-              <strong className="font-semibold text-[#145338]">{data.sugestaoEconomia}</strong>.
+              {data.sugestao.textoAntes}
+              <strong className="font-semibold text-slate-800">
+                {data.sugestao.destaque1}
+              </strong>
+              {data.sugestao.textoMeio}
+              <strong className="font-semibold text-[#145338]">
+                {data.sugestao.economia}
+              </strong>
+              .
             </p>
           </div>
 
@@ -479,7 +820,7 @@ export default function VisaoGeralPage({ userName = 'Marina' }) {
           </span>
 
           <div>
-            <p className="text-sm font-bold text-slate-900">Relatório semanal pronto</p>
+            <p className="text-sm font-bold text-slate-900">Relatório do período pronto</p>
             <p className="text-xs text-slate-400 mt-0.5">
               Resumo para o proprietário • {data.periodoRelatorio}
             </p>

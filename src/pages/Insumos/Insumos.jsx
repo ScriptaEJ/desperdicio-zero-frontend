@@ -1,19 +1,33 @@
-// src/pages/Insumos/InsumosPage.jsx
+// src/pages/Insumos/Insumos.jsx
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import InsumoModal from '../../components/InsumoModal/InsumoModal';
+import { useToast } from '../../contexts/ToastContext';
 import {
   atualizarInsumo,
   criarInsumo,
+  extrairErroApi,
   listarInsumos,
 } from '../../services/insumosService';
 
+const CATEGORIA_LABELS = {
+  hortifruti: 'Hortifrúti',
+  laticinio: 'Laticínios',
+  proteinas: 'Proteínas',
+  mercearia: 'Mercearia',
+  bebidas: 'Bebidas',
+};
+
+const formatCategoria = (cat) => CATEGORIA_LABELS[cat] || cat;
+
 const formatBRL = (value) =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const formatQuantity = (value, unit) =>
-  `${value.toLocaleString('pt-BR')} ${unit}`;
+  `${Number(value || 0).toLocaleString('pt-BR')} ${unit}`;
 
 export default function InsumosPage() {
+  const toast = useToast();
+
   const [insumos, setInsumos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,10 +45,12 @@ export default function InsumosPage() {
       const lista = await listarInsumos();
       setInsumos(lista);
     } catch (err) {
-      const detail =
-        err.response?.data?.detail ||
-        'Não foi possível carregar os insumos. Verifique se a API está rodando na porta 5000.';
-      setError(typeof detail === 'string' ? detail : 'Erro ao carregar insumos.');
+      setError(
+        extrairErroApi(
+          err,
+          'Não foi possível carregar os insumos. Verifique se a API está rodando na porta 5000.'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -99,15 +115,17 @@ export default function InsumosPage() {
         setInsumos((prev) =>
           prev.map((item) => (item.id === atualizado.id ? atualizado : item))
         );
+        toast.success('Insumo atualizado com sucesso!');
       } else {
         const criado = await criarInsumo(formData);
         setInsumos((prev) => [criado, ...prev]);
+        toast.success('Insumo cadastrado com sucesso!');
       }
     } catch (err) {
-      const detail =
-        err.response?.data?.detail || 'Erro ao salvar o insumo no servidor.';
-      setError(typeof detail === 'string' ? detail : 'Erro de validação nos dados.');
-      throw err; // Mantém o modal aberto para o usuário corrigir
+      const msg = extrairErroApi(err, 'Erro ao salvar o insumo no servidor.');
+      setError(msg);
+      toast.error(msg);
+      throw err;
     }
   };
 
@@ -231,7 +249,7 @@ export default function InsumosPage() {
             >
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat === 'Todas' ? 'Todas as categorias' : cat}
+                  {cat === 'Todas' ? 'Todas as categorias' : formatCategoria(cat)}
                 </option>
               ))}
             </select>
@@ -262,7 +280,7 @@ export default function InsumosPage() {
                           {item.nome}
                         </p>
                         <p className="text-xs text-slate-400">
-                          {item.categoria} · por {item.unidade}
+                          {formatCategoria(item.categoria)} · por {item.unidade}
                         </p>
                       </div>
                     </div>
@@ -360,7 +378,7 @@ export default function InsumosPage() {
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-600">
-                        {item.categoria}
+                        {formatCategoria(item.categoria)}
                       </td>
 
                       <td className="py-3.5 px-4 font-semibold text-slate-800">

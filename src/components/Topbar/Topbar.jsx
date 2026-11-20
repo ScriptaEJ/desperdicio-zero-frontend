@@ -1,9 +1,79 @@
 // src/components/Topbar/Topbar.jsx
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../../services/api';
+
 export default function Topbar({
-  restaurantName = 'Casa da Vila',
   onOpenRegisterLoss,
   onOpenMobileMenu,
+  onSelectRestaurant,
 }) {
+  const [restaurantes, setRestaurantes] = useState([]);
+  const [selectedId, setSelectedId] = useState(() =>
+    localStorage.getItem('restaurante_id')
+  );
+  const [carregando, setCarregando] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    let ativo = true;
+
+    api
+      .get('/restaurantes/', { params: { page: 1, size: 50 } })
+      .then(({ data }) => {
+        if (!ativo) return;
+        const lista = Array.isArray(data) ? data : data?.items ?? [];
+        setRestaurantes(lista);
+
+        if (lista.length > 0) {
+          const salvoExiste = lista.some(
+            (r) => String(r.id) === String(selectedId)
+          );
+          const idAtivo = salvoExiste ? String(selectedId) : String(lista[0].id);
+          setSelectedId(idAtivo);
+          localStorage.setItem('restaurante_id', idAtivo);
+        }
+      })
+      .catch(() => {
+        // Mantém fallback silencioso se ainda não houver restaurante
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
+
+  const activeRestaurant =
+    restaurantes.find((r) => String(r.id) === String(selectedId)) ||
+    restaurantes[0] ||
+    null;
+
+  const handleSelect = (restaurante) => {
+    const novoId = String(restaurante.id);
+    setSelectedId(novoId);
+    localStorage.setItem('restaurante_id', novoId);
+    setDropdownOpen(false);
+    onSelectRestaurant?.(restaurante);
+  };
+
   return (
     <header className="sticky top-0 z-30 h-16 sm:h-20 bg-white border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 shrink-0">
       {/* Esquerda: Botão Menu Mobile + Seletor de Restaurante */}
@@ -19,17 +89,26 @@ export default function Topbar({
           </svg>
         </button>
 
-        <div className="min-w-0">
+        <div className="relative min-w-0" ref={dropdownRef}>
           <span className="block text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
             Restaurante
           </span>
+
           <button
             type="button"
+            onClick={() => setDropdownOpen((prev) => !prev)}
+            aria-expanded={dropdownOpen}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-800 hover:text-slate-950 mt-0.5 max-w-full cursor-pointer"
           >
-            <span className="truncate">{restaurantName}</span>
+            <span className="truncate">
+              {carregando
+                ? 'Carregando...'
+                : activeRestaurant?.nome || 'Sem restaurante'}
+            </span>
             <svg
-              className="w-4 h-4 text-slate-500 shrink-0"
+              className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-150 ${
+                dropdownOpen ? 'rotate-180' : ''
+              }`}
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -38,22 +117,62 @@ export default function Topbar({
               <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+
+          {dropdownOpen && (
+            <div className="absolute left-0 mt-2 w-64 rounded-xl bg-white border border-slate-200/90 shadow-lg py-1.5 z-50">
+              {restaurantes.length === 0 ? (
+                <p className="px-3.5 py-2 text-xs text-slate-500">
+                  Nenhum restaurante encontrado.
+                </p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto">
+                  {restaurantes.map((item) => {
+                    const isSelected = String(item.id) === String(activeRestaurant?.id);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleSelect(item)}
+                        className={`w-full px-3.5 py-2 text-left text-sm flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#E7F3EC] text-[#145338] font-semibold'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="truncate">{item.nome}</span>
+                        {isSelected && (
+                          <svg
+                            className="w-4 h-4 text-[#145338] shrink-0"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                          >
+                            <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="border-t border-slate-100 mt-1 pt-1 px-2">
+                <Link
+                  to="/configuracoes"
+                  onClick={() => setDropdownOpen(false)}
+                  className="block rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand-800 hover:bg-slate-50"
+                >
+                  Configurar restaurante →
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Direita: Notificações + Registrar perda */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <button
-          type="button"
-          aria-label="Notificações"
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
+      {/* Direita: Registrar perda */}
+      <div className="flex items-center shrink-0">
         <button
           type="button"
           onClick={onOpenRegisterLoss}
