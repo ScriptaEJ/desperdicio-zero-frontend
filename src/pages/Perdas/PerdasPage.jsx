@@ -1,13 +1,26 @@
+// src/pages/Perdas/PerdasPage.jsx
 import { useState } from 'react';
 import RegisterLossModal from '../../components/RegisterLossModal/RegisterLossModal';
 import { PerdasFiltros } from '../../components/Perdas/PerdasFiltros';
 import { PerdasTabela } from '../../components/Perdas/PerdasTabela';
 import { ResumoPerdas } from '../../components/Perdas/ResumoPerdas';
+import { useToast } from '../../contexts/ToastContext';
 import { usePerdas } from '../../hooks/usePerdas';
 
 export default function PerdasPage() {
+  const toast = useToast();
   const { perdas, resumo, carregando, erro, busca, setBusca, motivo, setMotivo, criar, recarregar } = usePerdas();
   const [modalAberto, setModalAberto] = useState(false);
+
+  const handleCriarPerda = async (dados) => {
+    try {
+      await criar(dados);
+      toast.success('Perda registrada com sucesso!');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível registrar a perda.');
+      throw err;
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#f4f6f4] px-4 py-6 text-[#12261d] md:px-12 md:py-10">
@@ -19,7 +32,7 @@ export default function PerdasPage() {
         </div>
         <button
           onClick={() => setModalAberto(true)}
-          className="inline-flex items-center gap-2 rounded-[10px] bg-[#14573f] px-5 py-3 text-sm font-semibold text-white hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#14573f] focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-[10px] bg-[#14573f] px-5 py-3 text-sm font-semibold text-white hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#14573f] focus-visible:ring-offset-2 cursor-pointer"
         >
           <span aria-hidden>+</span> Nova perda
         </button>
@@ -32,7 +45,11 @@ export default function PerdasPage() {
         <PerdasTabela perdas={perdas} carregando={carregando} erro={erro} onTentarNovamente={recarregar} />
       </section>
 
-      <RegisterLossModal isOpen={modalAberto} onClose={() => setModalAberto(false)} onSave={criar} />
+      <RegisterLossModal
+        isOpen={modalAberto}
+        onClose={() => setModalAberto(false)}
+        onSave={handleCriarPerda}
+      />
     </main>
   );
 }

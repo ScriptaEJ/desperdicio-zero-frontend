@@ -3,30 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../../layouts/AuthLayout';
 import RegisterAccountForm from '../../components/RegisterAccountForm/RegisterAccountForm';
 import RegisterRestaurantForm from '../../components/RegisterRestaurantForm/RegisterRestaurantForm';
-import { createUser } from '../../services/userServices';
+import { loginRequest } from '../../services/authService';
+import { extrairErroApi } from '../../services/insumosService';
 import { createRestaurant } from '../../services/restaurantServices';
-
-const getErrorMessage = (err, fallback) =>
-  err?.response?.data?.message || fallback;
+import { createUser } from '../../services/userServices';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [account, setAccount] = useState({});
   const [restaurant, setRestaurant] = useState({});
-  const [user, setUser] = useState(null); // usuário já criado na etapa 1
+  const [userCreated, setUserCreated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const goToLogin = () => navigate('/login');
 
-  // ETAPA 1 → registra o usuário
+  // ETAPA 1 → registra o usuário e já autentica para liberar a Etapa 2
   const handleAccountSubmit = async (values) => {
     setAccount(values);
     setError('');
 
-    // se voltou da etapa 2, o usuário já existe: não cria de novo
-    if (user) {
+    if (userCreated) {
       setStep(2);
       return;
     }
@@ -34,37 +32,62 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { confirmPassword, ...userData } = values;
-      const createdUser = await createUser(userData);
-      setUser(createdUser);
+      const payloadUsuario = {
+        perfil: 'admin',
+        ...userData,
+      };
+
+      await createUser(payloadUsuario);
+
+      // Autentica automaticamente para obter o token exigido em POST /restaurantes/
+      const email = payloadUsuario.email;
+      const senha = payloadUsuario.senha || payloadUsuario.password;
+      if (email && senha) {
+        await loginRequest(email, senha);
+      }
+
+      setUserCreated(true);
       setStep(2);
     } catch (err) {
-      setError(getErrorMessage(err, 'Não foi possível criar sua conta. Tente novamente.'));
+      setError(
+        extrairErroApi(err, 'Não foi possível criar sua conta. Tente novamente.')
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleBack = (values) => {
-    setRestaurant(values); // guarda o que já foi digitado
+    setRestaurant(values);
     setError('');
     setStep(1);
   };
 
-  // ETAPA 2 → registra o restaurante
+  // ETAPA 2 → registra o restaurante já vinculado ao usuário logado
   const handleFinish = async (values) => {
     setRestaurant(values);
     setError('');
     setLoading(true);
     try {
-      await createRestaurant({
+      const novoRestaurante = await createRestaurant({
         nome: values.restaurantName,
-        cwid: values.cwid.trim() || null,
-        custo_medio_kg: Number(values.costPerKg.replace(',', '.')),
-        userId: user?.id,
+        cwid: values.cwid?.trim() || null,
+        custo_medio_kg: Number(String(values.costPerKg).replace(',', '.')),
       });
-      navigate('/login');
+
+      if (novoRestaurante?.id != null) {
+        localStorage.setItem('restaurante_id', String(novoRestaurante.id));
+      }
+
+      // Como já está autenticado, pode ir direto para a Visão Geral
+      navigate('/visao-geral');
     } catch (err) {
-      setError(getErrorMessage(err, 'Não foi possível cadastrar o restaurante. Tente novamente.'));
+      setError(
+        extrairErroApi(
+          err,
+          'Não foi possível cadastrar o restaurante. Tente novamente.'
+        )
+      );
     } finally {
       setLoading(false);
     }

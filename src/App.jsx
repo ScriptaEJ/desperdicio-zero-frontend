@@ -1,33 +1,58 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import PrivateRoute from './components/PrivateRoute/PrivateRoute';
+import { ToastProvider } from './contexts/ToastContext';
 import DashboardLayout from './layouts/DashboardLayout';
-import LoginPage from './pages/Login/LoginPage';
-import RegisterPage from './pages/Register/RegisterPage';
-import VisaoGeralPage from './pages/VisaoGeral/VisaoGeral';
-import InsumosPage from './pages/Insumos/Insumos';
 import ConfiguracoesPage from './pages/Configuracoes/Configuracoes';
-import RelatoriosPage from './pages/Relatorios/RelatoriosPage'
-import PerdasPage from './pages/Perdas/PerdasPage'
+import InsumosPage from './pages/Insumos/Insumos';
+import LoginPage from './pages/Login/LoginPage';
+import PerdasPage from './pages/Perdas/PerdasPage';
+import RegisterPage from './pages/Register/RegisterPage';
+import RelatoriosPage from './pages/Relatorios/RelatoriosPage';
+import VisaoGeralPage from './pages/VisaoGeral/VisaoGeral';
+import { isAuthenticated } from './services/authService';
+
+function PublicRoute({ children }) {
+  return isAuthenticated() ? <Navigate to="/visao-geral" replace /> : children;
+}
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Rotas públicas (sem Sidebar) */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/cadastro" element={<RegisterPage />} />
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Rotas públicas (sem Sidebar) */}
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/cadastro"
+            element={
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            }
+          />
 
-        {/* Rotas internas (com Sidebar fixa via DashboardLayout) */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/insumos" element={<InsumosPage />} />
-          {/* Quando o time criar as outras, basta adicionar aqui: */}
-          <Route path="/visao-geral" element={<VisaoGeralPage />} />
-          <Route path="/configuracoes" element={<ConfiguracoesPage />} />
-          <Route path="/relatorios" element={<RelatoriosPage />} />
-          <Route path="/perdas" element={<PerdasPage />} />
-        </Route>
+          {/* Rotas internas protegidas (exigem token JWT válido) */}
+          <Route element={<PrivateRoute />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/" element={<Navigate to="/visao-geral" replace />} />
+              <Route path="/visao-geral" element={<VisaoGeralPage />} />
+              <Route path="/perdas" element={<PerdasPage />} />
+              <Route path="/insumos" element={<InsumosPage />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
+              <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+            </Route>
+          </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/visao-geral" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

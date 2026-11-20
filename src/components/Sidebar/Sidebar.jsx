@@ -1,5 +1,7 @@
-// src/components/Sidebar/Sidebar.jsx
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { logout } from '../../services/authService';
+import { carregarConfiguracoes } from '../../services/cofiguracoesService';
 import Logo from '../Logo/Logo';
 
 const NAV_ITEMS = [
@@ -59,23 +61,82 @@ const NAV_ITEMS = [
   },
 ];
 
-export default function Sidebar({
-  user = { name: 'Marina Costa', role: 'Administradora' },
-  isOpen = false,
-  onClose,
-}) {
-  const navigate = useNavigate();
+const PERFIL_LABELS = {
+  admin: 'Administrador',
+  user: 'Usuário',
+};
 
-  const initials = user.name
-    .split(' ')
+function lerUsuarioInicial() {
+  const cachedName = localStorage.getItem('dz_user_name');
+  const cachedRole = localStorage.getItem('dz_user_role');
+  if (cachedName) {
+    return { name: cachedName, role: cachedRole || 'Usuário' };
+  }
+
+  try {
+    const token =
+      localStorage.getItem('acess_token') || localStorage.getItem('access_token');
+    if (token && token.split('.').length === 3) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const sub = String(payload?.sub || '');
+      const fallbackName =
+        payload?.nome || (sub.includes('@') ? sub.split('@')[0] : 'Usuário');
+      const fallbackRole = PERFIL_LABELS[payload?.perfil] || 'Usuário';
+      return { name: fallbackName, role: fallbackRole };
+    }
+  } catch {
+    // Ignora falha ao decodificar token
+  }
+
+  return { name: 'Usuário', role: 'Equipe' };
+}
+
+export default function Sidebar({ user, isOpen = false, onClose }) {
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(() => user || lerUsuarioInicial());
+
+  useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+      return;
+    }
+
+    let ativo = true;
+
+    carregarConfiguracoes()
+      .then((dados) => {
+        if (!ativo || !dados?.usuario?.nome) return;
+        const atualizado = {
+          name: dados.usuario.nome,
+          role: PERFIL_LABELS[dados.usuario.perfil] || 'Usuário',
+        };
+        setCurrentUser(atualizado);
+        localStorage.setItem('dz_user_name', atualizado.name);
+        localStorage.setItem('dz_user_role', atualizado.role);
+      })
+      .catch(() => {
+        // Mantém o fallback extraído do token JWT
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [user]);
+
+  const initials = (currentUser.name || 'U')
+    .trim()
+    .split(/\s+/)
     .slice(0, 2)
     .map((n) => n[0])
     .join('')
     .toUpperCase();
 
   const handleLogout = () => {
+    localStorage.removeItem('dz_user_name');
+    localStorage.removeItem('dz_user_role');
+    logout();
     if (onClose) onClose();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const navLinkClass = ({ isActive }) =>
@@ -150,8 +211,8 @@ export default function Sidebar({
                 {initials}
               </div>
               <div className="truncate">
-                <p className="text-sm font-semibold text-slate-800 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 truncate">{user.role}</p>
+                <p className="text-sm font-semibold text-slate-800 truncate">{currentUser.name}</p>
+                <p className="text-xs text-slate-500 truncate">{currentUser.role}</p>
               </div>
             </div>
 

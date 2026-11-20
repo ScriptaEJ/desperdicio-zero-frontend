@@ -1,25 +1,11 @@
-// src/components/RegisterLossModal/RegisterLossModal.jsx
 import { useEffect, useMemo, useState } from 'react';
-
-const INSUMOS_DISPONIVEIS = [
-  { id: 1, nome: 'Mussarela', unidade: 'kg', preco: 26.38 },
-  { id: 2, nome: 'Tomate italiano', unidade: 'kg', preco: 9.0 },
-  { id: 3, nome: 'Filé de frango', unidade: 'kg', preco: 18.0 },
-  { id: 4, nome: 'Arroz branco', unidade: 'kg', preco: 4.4 },
-  { id: 5, nome: 'Azeite extravirgem', unidade: 'unidade', preco: 32.9 },
-];
-
-const MOTIVOS_PERDA = [
-  'Vencimento / Validade',
-  'Avaria ou queda',
-  'Erro no preparo',
-  'Armazenamento inadequado',
-  'Sobra de produção',
-  'Outro',
-];
-
-const TURNOS = ['Não informado', 'Manhã', 'Tarde', 'Noite'];
-const UNIDADES = ['kg', 'g', 'L', 'ml', 'unidade'];
+import { listarInsumos } from '../../services/insumosService';
+import {
+  MOTIVOS_PERDA,
+  TIPOS_PERDA,
+  TURNOS_PERDA,
+  UNIDADES_PERDA,
+} from '../../services/perdasService';
 
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
@@ -31,32 +17,67 @@ const formatBRL = (value) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function RegisterLossModal({ isOpen, onClose, onSave }) {
-  const [tipoRegistro, setTipoRegistro] = useState('Insumo');
-  const [insumoId, setInsumoId] = useState(INSUMOS_DISPONIVEIS[0].id);
+  const [insumos, setInsumos] = useState([]);
+  const [carregandoInsumos, setCarregandoInsumos] = useState(false);
+
+  const [tipoRegistro, setTipoRegistro] = useState('insumo');
+  const [insumoId, setInsumoId] = useState('');
   const [quantidade, setQuantidade] = useState('');
-  const [unidade, setUnidade] = useState(INSUMOS_DISPONIVEIS[0].unidade);
-  const [custoUnitario, setCustoUnitario] = useState(
-    INSUMOS_DISPONIVEIS[0].preco.toFixed(2).replace('.', ',')
-  );
+  const [unidade, setUnidade] = useState('kg');
+  const [custoUnitario, setCustoUnitario] = useState('');
   const [motivo, setMotivo] = useState('');
-  const [turno, setTurno] = useState('Não informado');
+  const [turno, setTurno] = useState('');
   const [dataPerda, setDataPerda] = useState(getCurrentDateTimeLocal);
   const [observacao, setObservacao] = useState('');
 
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+
   useEffect(() => {
-    if (isOpen) {
-      setDataPerda(getCurrentDateTimeLocal());
-    }
+    if (!isOpen) return;
+
+    setDataPerda(getCurrentDateTimeLocal());
+    setErro('');
+
+    let ativo = true;
+    setCarregandoInsumos(true);
+
+    listarInsumos()
+      .then((lista) => {
+        if (!ativo) return;
+        const apenasAtivos = lista.filter((i) => i.ativo !== false);
+        const disponiveis = apenasAtivos.length > 0 ? apenasAtivos : lista;
+        setInsumos(disponiveis);
+
+        if (disponiveis.length > 0) {
+          const primeiro = disponiveis[0];
+          setInsumoId(String(primeiro.id));
+          setUnidade(primeiro.unidade || 'kg');
+          setCustoUnitario(Number(primeiro.preco ?? 0).toFixed(2).replace('.', ','));
+        } else {
+          setInsumoId('');
+        }
+      })
+      .catch(() => {
+        if (ativo) setInsumos([]);
+      })
+      .finally(() => {
+        if (ativo) setCarregandoInsumos(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, [isOpen]);
 
   const handleInsumoChange = (e) => {
-    const selectedId = Number(e.target.value);
-    setInsumoId(selectedId);
+    const selectedValue = e.target.value;
+    setInsumoId(selectedValue);
 
-    const found = INSUMOS_DISPONIVEIS.find((item) => item.id === selectedId);
+    const found = insumos.find((item) => String(item.id) === selectedValue);
     if (found) {
       setUnidade(found.unidade);
-      setCustoUnitario(found.preco.toFixed(2).replace('.', ','));
+      setCustoUnitario(Number(found.preco ?? 0).toFixed(2).replace('.', ','));
     }
   };
 
@@ -68,32 +89,50 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setErro('');
 
-    const payload = {
-      tipo_registro: tipoRegistro,
-      insumo_id: insumoId,
-      quantidade: parseFloat(String(quantidade).replace(',', '.')) || 0,
-      unidade_medida: unidade,
-      custo_unitario: parseFloat(String(custoUnitario).replace(',', '.')) || 0,
-      valor_total: Number(valorTotal.toFixed(2)),
-      motivo,
-      turno,
-      data_perda: dataPerda,
-      observacao: observacao.trim() || null,
-    };
+    const qtdNum = parseFloat(String(quantidade).replace(',', '.'));
+    const custoNum = parseFloat(String(custoUnitario).replace(',', '.'));
 
-    if (onSave) {
-      onSave(payload);
-    } else {
-      console.log('Payload pronto para o FastAPI:', payload);
+    if (!qtdNum || qtdNum <= 0) {
+      setErro('Informe uma quantidade maior que zero.');
+      return;
     }
 
-    setQuantidade('');
-    setMotivo('');
-    setObservacao('');
-    onClose();
+    if (Number.isNaN(custoNum) || custoNum < 0) {
+      setErro('Informe um custo unitário válido.');
+      return;
+    }
+
+    const payload = {
+      insumo_id: insumoId ? Number(insumoId) : null,
+      tipo_registro: tipoRegistro,
+      quantidade: qtdNum,
+      unidade_medida: unidade,
+      custo_unitario: custoNum,
+      motivo,
+      turno: turno || null,
+      observacao: observacao.trim() || null,
+      data_perda: new Date(dataPerda).toISOString(),
+    };
+
+    try {
+      setSalvando(true);
+      if (onSave) {
+        await onSave(payload);
+      }
+      setQuantidade('');
+      setMotivo('');
+      setTurno('');
+      setObservacao('');
+      onClose();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Não foi possível salvar a perda.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const selectClass =
@@ -138,6 +177,12 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
         {/* Formulário com corpo rolável e rodapé fixo */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto px-5 py-4 sm:px-7 space-y-4">
+            {erro && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3.5 py-2.5">
+                {erro}
+              </div>
+            )}
+
             <div>
               <label className={labelClass}>Tipo de registro</label>
               <div className="relative">
@@ -146,27 +191,44 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
                   onChange={(e) => setTipoRegistro(e.target.value)}
                   className={selectClass}
                 >
-                  <option value="Insumo">Insumo</option>
-                  <option value="Preparo">Preparo / Receita</option>
-                  <option value="Produto pronto">Produto pronto</option>
+                  {TIPOS_PERDA.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown />
               </div>
             </div>
 
             <div>
-              <label className={labelClass}>Insumo</label>
+              <label className={labelClass}>
+                Insumo {tipoRegistro !== 'insumo' && <span className="text-slate-400 font-normal">(opcional)</span>}
+              </label>
               <div className="relative">
                 <select
                   value={insumoId}
                   onChange={handleInsumoChange}
+                  disabled={carregandoInsumos}
+                  required={tipoRegistro === 'insumo'}
                   className={selectClass}
                 >
-                  {INSUMOS_DISPONIVEIS.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nome}
-                    </option>
-                  ))}
+                  {carregandoInsumos ? (
+                    <option value="">Carregando insumos...</option>
+                  ) : insumos.length === 0 ? (
+                    <option value="">Nenhum insumo cadastrado</option>
+                  ) : (
+                    <>
+                      {tipoRegistro !== 'insumo' && (
+                        <option value="">Não vinculado a um insumo</option>
+                      )}
+                      {insumos.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.nome}
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
                 <ChevronDown />
               </div>
@@ -194,7 +256,7 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
                     onChange={(e) => setUnidade(e.target.value)}
                     className={selectClass}
                   >
-                    {UNIDADES.map((u) => (
+                    {UNIDADES_PERDA.map((u) => (
                       <option key={u} value={u}>
                         {u}
                       </option>
@@ -245,8 +307,8 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
                       Selecione o motivo
                     </option>
                     {MOTIVOS_PERDA.map((m) => (
-                      <option key={m} value={m} className="text-slate-800">
-                        {m}
+                      <option key={m.value} value={m.value} className="text-slate-800">
+                        {m.label}
                       </option>
                     ))}
                   </select>
@@ -262,9 +324,9 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
                     onChange={(e) => setTurno(e.target.value)}
                     className={selectClass}
                   >
-                    {TURNOS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {TURNOS_PERDA.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
                       </option>
                     ))}
                   </select>
@@ -305,16 +367,18 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
             <button
               type="button"
               onClick={onClose}
-              className="text-sm font-medium text-slate-500 hover:text-slate-800 px-3 py-2.5 sm:py-2 rounded-lg text-center transition-colors cursor-pointer"
+              disabled={salvando}
+              className="text-sm font-medium text-slate-500 hover:text-slate-800 px-3 py-2.5 sm:py-2 rounded-lg text-center transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancelar
             </button>
 
             <button
               type="submit"
-              className="bg-brand-800 hover:opacity-95 text-white text-sm font-medium px-5 py-2.5 rounded-lg text-center transition-opacity cursor-pointer"
+              disabled={salvando}
+              className="bg-brand-800 hover:opacity-95 text-white text-sm font-medium px-5 py-2.5 rounded-lg text-center transition-opacity cursor-pointer disabled:opacity-60"
             >
-              Salvar registro
+              {salvando ? 'Salvando...' : 'Salvar registro'}
             </button>
           </div>
         </form>
