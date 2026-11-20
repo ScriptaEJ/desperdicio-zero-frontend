@@ -58,7 +58,7 @@ function mapFromApi(item, insumosMap, usuariosMap) {
     id: item.id,
     restauranteId: item.restaurante_id,
     insumoId: item.insumo_id,
-    insumo: insumoObj?.nome || `${tipoLabel} #${item.id}`,
+    insumo: insumoObj?.nome || `${tipoLabel}`,
     tipo: tipoLabel,
     motivo: MOTIVO_LABELS[item.motivo] || item.motivo,
     quantidade: Number(item.quantidade ?? 0),

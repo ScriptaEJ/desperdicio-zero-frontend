@@ -36,6 +36,7 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
   useEffect(() => {
     if (!isOpen) return;
 
+    setTipoRegistro('insumo');
     setDataPerda(getCurrentDateTimeLocal());
     setErro('');
 
@@ -69,6 +70,20 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
       ativo = false;
     };
   }, [isOpen]);
+
+  const handleTipoRegistroChange = (e) => {
+    const novoTipo = e.target.value;
+    setTipoRegistro(novoTipo);
+
+    if (novoTipo !== 'insumo') {
+      setInsumoId('');
+    } else if (!insumoId && insumos.length > 0) {
+      const primeiro = insumos[0];
+      setInsumoId(String(primeiro.id));
+      setUnidade(primeiro.unidade || 'kg');
+      setCustoUnitario(Number(primeiro.preco ?? 0).toFixed(2).replace('.', ','));
+    }
+  };
 
   const handleInsumoChange = (e) => {
     const selectedValue = e.target.value;
@@ -123,6 +138,7 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
       if (onSave) {
         await onSave(payload);
       }
+      setTipoRegistro('insumo');
       setQuantidade('');
       setMotivo('');
       setTurno('');
@@ -188,7 +204,7 @@ export default function RegisterLossModal({ isOpen, onClose, onSave }) {
               <div className="relative">
                 <select
                   value={tipoRegistro}
-                  onChange={(e) => setTipoRegistro(e.target.value)}
+                  onChange={handleTipoRegistroChange}
                   className={selectClass}
                 >
                   {TIPOS_PERDA.map((t) => (
