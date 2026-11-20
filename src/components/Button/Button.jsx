@@ -9,6 +9,7 @@ export default function Button({
   icon,
   fullWidth = false,
   loading = false,
+  loadingText = 'Entrando...',
   ...rest
 }) {
   const classes = [
@@ -20,7 +21,7 @@ export default function Button({
 
   return (
     <button className={classes} {...rest} disabled={loading || rest.disabled}>
-      {loading ? 'Entrando...' : children}
+      {loading ? loadingText : children}
       {!loading && icon}
     </button>
   );
