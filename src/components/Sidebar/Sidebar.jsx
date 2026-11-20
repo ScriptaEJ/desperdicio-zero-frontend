@@ -39,16 +39,6 @@ const NAV_ITEMS = [
     ),
   },
   {
-    label: 'Análises',
-    to: '/analises',
-    icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-        <path d="M3 3v18h18" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8 17v-5M13 17V8M18 17v-8" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
     label: 'Relatórios',
     to: '/relatorios',
     icon: (
